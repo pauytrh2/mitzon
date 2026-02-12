@@ -123,9 +123,9 @@ def wifi_menu(stdscr):
         stdscr.refresh()
         key = stdscr.get_wch()
 
-        if key == curses.KEY_UP and current_row > 0:
+        if key in ("ל", curses.KEY_UP) and current_row > 0:
             current_row -= 1
-        elif key == curses.KEY_DOWN and current_row < len(networks) - 1:
+        elif key in ("ח", curses.KEY_DOWN) and current_row < len(MENU) - 1:
             current_row += 1
         elif key in (10, 13, curses.KEY_ENTER):
             selected = networks[current_row].split(" | ")[0]
