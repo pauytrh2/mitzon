@@ -1,4 +1,5 @@
 import curses
+import subprocess
 
 MENU = ["בחר רשת", "הגדרות", "עזרה", "יציאה"]
 
@@ -47,8 +48,11 @@ def main(stdscr):
             current_row += 1
         elif key == "/":
             break
+
         elif key in (curses.KEY_ENTER, 10, 13, "\n", "\r"):
-            if MENU[current_row] == "יציאה":
+            if MENU[current_row] == rtl_words("בחר רשת"):
+                wifi_menu(stdscr)
+            elif MENU[current_row] == "יציאה":
                 break
             else:
                 stdscr.addstr(
@@ -59,6 +63,77 @@ def main(stdscr):
                     ),
                 )
                 stdscr.getch()
+
+
+def get_wifi_networks():
+    try:
+        result = subprocess.run(
+            ["nmcli", "-t", "-f", "SSID,SECURITY,SIGNAL", "dev", "wifi", "list"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        networks = []
+        for line in result.stdout.strip().split("\n"):
+            if line:
+                parts = line.split(":")
+                ssid = parts[0] if parts[0] else "<Hidden>"
+                security = parts[1]
+                signal = parts[2]
+                networks.append(f"{ssid} | {signal}% | {security}")
+
+        return networks if networks else ["לא נמצאו רשתות"]
+
+    except Exception as e:
+        return [f"שגיאה: {str(e)}"]
+
+
+def connect_to_network(stdscr, ssid):
+    pass
+
+
+def wifi_menu(stdscr):
+    networks = get_wifi_networks()
+    current_row = 0
+
+    while True:
+        stdscr.clear()
+        h, w = stdscr.getmaxyx()
+        stdscr.box()
+
+        title = rtl_words("בחר רשת")
+        stdscr.addstr(1, (w - len(title)) // 2, title, curses.A_BOLD)
+
+        for idx, net in enumerate(networks):
+            y = 3 + idx
+
+            if y >= h - 2:
+                break
+
+            net_display = net[: w - 4]
+
+            if idx == current_row:
+                stdscr.attron(curses.A_REVERSE)
+                stdscr.addstr(y, 2, net_display)
+                stdscr.attroff(curses.A_REVERSE)
+            else:
+                stdscr.addstr(y, 2, net_display)
+
+        stdscr.refresh()
+        key = stdscr.get_wch()
+
+        if key == curses.KEY_UP and current_row > 0:
+            current_row -= 1
+        elif key == curses.KEY_DOWN and current_row < len(networks) - 1:
+            current_row += 1
+        elif key in (10, 13, curses.KEY_ENTER):
+            selected = networks[current_row].split(" | ")[0]
+            if selected not in ("לא נמצאו רשתות",) and not selected.startswith("שגיאה"):
+                connect_to_network(stdscr, selected)
+                break
+        elif key == "/":
+            break
 
 
 def rtl_words(text):
